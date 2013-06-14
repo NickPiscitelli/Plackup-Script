@@ -1,0 +1,77 @@
+#!/bin/sh
+
+#
+# plackup - this script start plackup with the specified configuration options
+#
+# chkconfig:   2345 85 15
+# description:  Plack is a PSGI middleware used to interface between Perl web applications and web servers
+# pidfile:     /var/www/html/eautalk/eautalk.pid
+
+RUN_AS=nginx
+PID=/var/www/html/eautalk/eautalk.pid
+PLACK_BIN=/usr/local/bin/plackup
+PLACK_MODE=production
+PLACK_SERVER=Starman
+PLACK_WORKERS=4
+PLACK_LISTEN=/var/www/html/eautalk/plack.sock
+PSGI_APP=/var/www/html/eautalk/bin/app.pl
+
+COMMAND="$PLACK_BIN -E $PLACK_MODE -s $PLACK_SERVER --workers=$PLACK_WORKERS -l $PLACK_LISTEN -a $PSGI_APP --pid=$PID -D"
+PROG=$(basename $PLACK_BIN)
+
+. /etc/rc.d/init.d/functions
+
+start() {
+        echo -n $"Starting $PROG: "
+        daemon --user=$RUN_AS --pidfile="$PID" $COMMAND
+        echo
+  return $?
+}
+
+stop() {
+       	echo -n $"Stopping $PROG: "
+        killproc -p $PID $PROG
+        echo
+	return $?
+}
+
+reload() {
+	echo -n $"Reloading $PROG: "
+        killproc -p $PID $PROG -HUP
+        return $?
+}
+
+rh_status() {
+    status $PROG
+}
+
+rh_status_q() {
+        rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+        start)
+                rh_status_q && exit 0
+                $1
+        ;;
+
+        stop)
+                rh_status_q || exit 0
+                $1
+        ;;
+
+        restart)
+                stop
+                start
+        ;;
+
+        reload)
+                rh_status_q || exit 7
+                $1
+        ;;
+
+    *)
+                echo "Usage: $0 {start|stop|reload}"
+                exit 2
+        ;;
+esac
